@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import logging
 import re
 import sys
+
+reload(sys)
+sys.setdefaultencoding("utf8")
 
 from collections import defaultdict
 from lxml.etree import tostring
@@ -33,7 +37,7 @@ REGEXES = {
     #'trimRe': re.compile('^\s+|\s+$/'),
     #'normalizeRe': re.compile('\s{2,}/'),
     #'killBreaksRe': re.compile('(<br\s*\/?>(\s|&nbsp;?)*){1,}/'),
-    'videoRe': re.compile('https?:\/\/(www\.)?(youtube|vimeo)\.com', re.I),
+    'videoRe': re.compile('https?:\/\/(www|v\.)?(youtube|vimeo|qq)\.com', re.I),
     #skipFootnoteLink:      /^\s*(\[?[a-z0-9]{1,2}\]?|^|edit|citation needed)\s*$/i,
 }
 
@@ -80,7 +84,7 @@ class Document:
     """Class to build a etree document out of html."""
 
     def __init__(self, input, positive_keywords=None, negative_keywords=None,
-                 url=None, min_text_length=25, retry_length=250, xpath=False):
+                 url=None, min_text_length=25, retry_length=250, xpath=False,wx_article=False):
         """Generate the document
 
         :param input: string of the html content.
@@ -91,7 +95,7 @@ class Document:
         :param xpath: If set to True, adds x="..." attribute to each HTML node,
         containing xpath path pointing to original document path (allows to
         reconstruct selected summary in original document).
-        
+
         Example:
             positive_keywords=["news-item", "block"]
             negative_keywords=["mysidebar", "related", "ads"]
@@ -114,6 +118,7 @@ class Document:
         self.min_text_length = min_text_length
         self.retry_length = retry_length
         self.xpath = xpath
+        self.is_wx_article = wx_article # 是否是微信公众号的文章
 
     def _html(self, force=False):
         if force or self.html is None:
@@ -177,6 +182,9 @@ class Document:
                 self._html(True)
                 for i in self.tags(self.html, 'script', 'style'):
                     i.drop_tree()
+                if self.is_wx_article == True:
+                    for i in self.tags(self.html, 'span', 'section', 'strong'):
+                        i.drop_tag()
                 for i in self.tags(self.html, 'body'):
                     i.set('id', 'readabilityBody')
                 if ruthless:
@@ -278,7 +286,7 @@ class Document:
             return None
 
         sorted_candidates = sorted(
-            candidates.values(), 
+            candidates.values(),
             key=lambda x: x['content_score'],
             reverse=True
         )
@@ -457,6 +465,8 @@ class Document:
 
         for elem in self.tags(node, "iframe"):
             if "src" in elem.attrib and REGEXES["videoRe"].search(elem.attrib["src"]):
+                elem.text = "VIDEO" # ADD content to iframe text node to force <iframe></iframe> proper output
+            if "data-src" in elem.attrib and REGEXES["videoRe"].search(elem.attrib["data-src"]):
                 elem.text = "VIDEO" # ADD content to iframe text node to force <iframe></iframe> proper output
             else:
                 elem.drop_tree()
