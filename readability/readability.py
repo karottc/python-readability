@@ -182,8 +182,10 @@ class Document:
                 self._html(True)
                 for i in self.tags(self.html, 'script', 'style'):
                     i.drop_tree()
+                for i in self.tags(self.html, 'a'):
+                    i.drop_tag()
                 if self.is_wx_article == True:
-                    for i in self.tags(self.html, 'span', 'section', 'strong'):
+                    for i in self.tags(self.html, 'span', 'section', 'strong', 'br'):
                         i.drop_tag()
                 for i in self.tags(self.html, 'body'):
                     i.set('id', 'readabilityBody')
@@ -466,7 +468,7 @@ class Document:
         for elem in self.tags(node, "iframe"):
             if "src" in elem.attrib and REGEXES["videoRe"].search(elem.attrib["src"]):
                 elem.text = "VIDEO" # ADD content to iframe text node to force <iframe></iframe> proper output
-            if "data-src" in elem.attrib and REGEXES["videoRe"].search(elem.attrib["data-src"]):
+            elif "data-src" in elem.attrib and REGEXES["videoRe"].search(elem.attrib["data-src"]):
                 elem.text = "VIDEO" # ADD content to iframe text node to force <iframe></iframe> proper output
             else:
                 elem.drop_tree()
